@@ -1,5 +1,8 @@
 #include <Wire.h>
 #include <wiring_private.h>
+#define OUTPUT 0x1
+#define INPUT 0x0
+
 static void turnOffPWM(uint8_t timer) {
   switch (timer) {
 #if defined(TCCR1A) && defined(COM1A1)
@@ -61,7 +64,7 @@ static void turnOffPWM(uint8_t timer) {
   }
 }
 void digitalWrite(int pin, bool value) {
-  if (pin > 19) {
+  if (pin >= 19) {
     Wire.beginTransmission(0x08);  // informs the bus that we will be sending data to slave device 8 (0x08)
     Wire.write(1);
     Wire.write(pin);
@@ -94,18 +97,13 @@ void digitalWrite(int pin, bool value) {
   }
 }
 
-void pinMode(int pin, String MODE) {
-  int IO;
-  if (MODE == OUTPUT) {
-    IO = 1;
-  } else if (MODE == INPUT) {
-    IO = 0;
-  }
+void pinMode(int pin, int MODE) {
+
   if (pin >= 19) {
     Wire.beginTransmission(0x08);  // informs the bus that we will be sending data to slave device 8 (0x08)
     Wire.write(0);
     Wire.write(pin);
-    Wire.write(IO);  // send value_pot
+    Wire.write(MODE);  // send value_pot
     Wire.endTransmission();
   } else if (pin < 19) {
     uint8_t bit = digitalPinToBitMask(pin);
@@ -140,11 +138,70 @@ void pinMode(int pin, String MODE) {
 }
 
 
-// void digitalRead(int pin, bool value) {
-//   if (pin > 19) {
-//    Wire.requestFrom(9, 20);
-//   }
-//   else {
+void analogWrite(int pin, int value) {
+  if (pin >= 19) {
+    Wire.beginTransmission(0x08);  // informs the bus that we will be sending data to slave device 8 (0x08)
+    Wire.write(2); 
+    Wire.write(pin);
+    Wire.write(value);  // send value_pot
+    Wire.endTransmission();
+  } else if (pin < 19) {
+    if (value == 0)
+    {
+      digitalWrite(pin, LOW);
+    }
+    else if (value == 255)
+    {
+      digitalWrite(pin, HIGH);
+    }
+    else
+    {
+      switch (digitalPinToTimer(pin))
+      {
+        case TIMER0A:
+          // connect pwm to pin on timer 0, channel A
+          sbi(TCCR0A, COM0A1);
+          OCR0A = value; // set pwm duty
+          break;
 
+        case TIMER0B:
+          // connect pwm to pin on timer 0, channel B
+          sbi(TCCR0A, COM0B1);
+          OCR0B = value; // set pwm duty
+          break;
 
-//   }}
+        case TIMER1A:
+          // connect pwm to pin on timer 1, channel A
+          sbi(TCCR1A, COM1A1);
+          OCR1A = value; // set pwm duty
+          break;
+
+        case TIMER1B:
+          // connect pwm to pin on timer 1, channel B
+          sbi(TCCR1A, COM1B1);
+          OCR1B = value; // set pwm duty
+          break;
+
+        case TIMER2A:
+          // connect pwm to pin on timer 2, channel A
+          sbi(TCCR2A, COM2A1);
+          OCR2A = value; // set pwm duty
+          break;
+
+        case TIMER2B:
+          // connect pwm to pin on timer 2, channel B
+          sbi(TCCR2A, COM2B1);
+          OCR2B = value; // set pwm duty
+          break;
+
+        case NOT_ON_TIMER:
+        default:
+          if (value < 128) {
+            digitalWrite(pin, LOW);
+          } else {
+            digitalWrite(pin, HIGH);
+          }
+      }
+    }
+  }
+}
