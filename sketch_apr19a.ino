@@ -5,6 +5,7 @@ Serial.begin(9600);
  Init();
 }
 void loop(){
-delay(1000);
+delay(100);
+
 
 }

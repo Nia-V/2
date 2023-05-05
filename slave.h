@@ -2,6 +2,12 @@
 #include <Arduino.h>
 #define OUTPUT 0x1
 #define INPUT 0x0
+#define INPUT_PULLUP 0x2
+int Aval;
+int _pin;
+
+
+
 void slave(int opt, int pin, int bvalue) {
   if (opt == 2) {
     switch (pin) {
@@ -52,6 +58,20 @@ void slave(int opt, int pin, int bvalue) {
         break;
     }
   }
+
+
+
+  if (opt == 3) {
+ _pin = pin-19;
+    Aval = analogRead(_pin);
+  }
+  if (opt == 4) {
+   _pin = pin-19;
+    Aval = digitalRead(_pin);
+  }
+
+
+
 
   if (opt == 0) {
     if (bvalue == OUTPUT) {
@@ -188,6 +208,74 @@ void slave(int opt, int pin, int bvalue) {
           break;
       }
     }
+
+    if (bvalue == INPUT_PULLUP) {
+      switch (pin) {
+        case 19:
+          pinMode(0, INPUT_PULLUP);
+          break;
+        case 20:
+          pinMode(1, INPUT_PULLUP);
+          break;
+        case 21:
+          pinMode(2, INPUT_PULLUP);
+          break;
+        case 22:
+          pinMode(3, INPUT_PULLUP);
+          break;
+        case 23:
+          pinMode(4, INPUT_PULLUP);
+          break;
+        case 24:
+          pinMode(5, INPUT_PULLUP);
+          break;
+        case 25:
+          pinMode(6, INPUT_PULLUP);
+          break;
+        case 26:
+          pinMode(7, INPUT_PULLUP);
+          break;
+        case 27:
+          pinMode(8, INPUT_PULLUP);
+          break;
+        case 28:
+          pinMode(9, INPUT_PULLUP);
+          break;
+        case 29:
+          pinMode(10, INPUT_PULLUP);
+          break;
+        case 30:
+          pinMode(11, INPUT_PULLUP);
+          break;
+        case 31:
+          pinMode(12, INPUT_PULLUP);
+          break;
+        case 32:
+          pinMode(13, INPUT_PULLUP);
+          break;
+        case 33:
+          pinMode(14, INPUT_PULLUP);
+          break;
+        case 34:
+          pinMode(15, INPUT_PULLUP);
+          break;
+        case 35:
+          pinMode(16, INPUT_PULLUP);
+          break;
+        case 36:
+          pinMode(17, INPUT_PULLUP);
+          break;
+        case 37:
+          pinMode(18, INPUT_PULLUP);
+          break;
+        case 38:
+          pinMode(19, INPUT_PULLUP);
+          break;
+        default:
+
+          break;
+      }
+    }
   }
 
 
@@ -258,7 +346,6 @@ void slave(int opt, int pin, int bvalue) {
         break;
     }
   }
-
 }
 
 void Rec(int numBytes) {
@@ -272,7 +359,7 @@ void Rec(int numBytes) {
 }
 
 void Req() {  // read all bytes received
-  Wire.write(8);
+  Wire.write(Aval);
 }
 
 

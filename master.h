@@ -2,7 +2,10 @@
 #include <wiring_private.h>
 #define OUTPUT 0x1
 #define INPUT 0x0
-
+void Init(){
+ Wire.begin(); // Initialize the I2C interface
+  Serial.begin(9600);
+}
 static void turnOffPWM(uint8_t timer) {
   switch (timer) {
 #if defined(TCCR1A) && defined(COM1A1)
@@ -141,57 +144,51 @@ void pinMode(int pin, int MODE) {
 void analogWrite(int pin, int value) {
   if (pin >= 19) {
     Wire.beginTransmission(0x08);  // informs the bus that we will be sending data to slave device 8 (0x08)
-    Wire.write(2); 
+    Wire.write(2);
     Wire.write(pin);
     Wire.write(value);  // send value_pot
     Wire.endTransmission();
   } else if (pin < 19) {
-    if (value == 0)
-    {
+    if (value == 0) {
       digitalWrite(pin, LOW);
-    }
-    else if (value == 255)
-    {
+    } else if (value == 255) {
       digitalWrite(pin, HIGH);
-    }
-    else
-    {
-      switch (digitalPinToTimer(pin))
-      {
+    } else {
+      switch (digitalPinToTimer(pin)) {
         case TIMER0A:
           // connect pwm to pin on timer 0, channel A
           sbi(TCCR0A, COM0A1);
-          OCR0A = value; // set pwm duty
+          OCR0A = value;  // set pwm duty
           break;
 
         case TIMER0B:
           // connect pwm to pin on timer 0, channel B
           sbi(TCCR0A, COM0B1);
-          OCR0B = value; // set pwm duty
+          OCR0B = value;  // set pwm duty
           break;
 
         case TIMER1A:
           // connect pwm to pin on timer 1, channel A
           sbi(TCCR1A, COM1A1);
-          OCR1A = value; // set pwm duty
+          OCR1A = value;  // set pwm duty
           break;
 
         case TIMER1B:
           // connect pwm to pin on timer 1, channel B
           sbi(TCCR1A, COM1B1);
-          OCR1B = value; // set pwm duty
+          OCR1B = value;  // set pwm duty
           break;
 
         case TIMER2A:
           // connect pwm to pin on timer 2, channel A
           sbi(TCCR2A, COM2A1);
-          OCR2A = value; // set pwm duty
+          OCR2A = value;  // set pwm duty
           break;
 
         case TIMER2B:
           // connect pwm to pin on timer 2, channel B
           sbi(TCCR2A, COM2B1);
-          OCR2B = value; // set pwm duty
+          OCR2B = value;  // set pwm duty
           break;
 
         case NOT_ON_TIMER:
@@ -203,5 +200,106 @@ void analogWrite(int pin, int value) {
           }
       }
     }
+  }
+}
+
+
+
+int digitalRead(int pin) {
+  if (pin >= 19) {
+    Wire.beginTransmission(0x08);  // informs the bus that we will be sending data to slave device 8 (0x08)
+    Wire.write(4);
+    Wire.write(pin);
+    Wire.write(0);
+    Wire.endTransmission();
+    Wire.requestFrom(0x08, 1);
+    return Wire.read();
+  }
+ if (pin < 19) {
+{
+	uint8_t timer = digitalPinToTimer(pin);
+	uint8_t bit = digitalPinToBitMask(pin);
+	uint8_t port = digitalPinToPort(pin);
+
+	if (port == NOT_A_PIN) return LOW;
+
+	// If the pin that support PWM output, we need to turn it off
+	// before getting a digital reading.
+	if (timer != NOT_ON_TIMER) turnOffPWM(timer);
+
+	if (*portInputRegister(port) & bit) return HIGH;
+	return LOW;
+}
+
+
+ }}
+
+
+
+
+
+
+int analogRead(int pin) {
+  if (pin >= 19) {
+    Wire.beginTransmission(0x08);  // informs the bus that we will be sending data to slave device 8 (0x08)
+    Wire.write(3);
+    Wire.write(pin);
+    Wire.endTransmission();
+    Wire.requestFrom(0x08, 1);
+    return Wire.read();
+  }
+  if (pin < 19) {
+
+    uint8_t analog_reference = DEFAULT;
+#if defined(analogPinToChannel)
+#if defined(__AVR_ATmega32U4__)
+    if (pin >= 18) pin -= 18;  // allow for channel or pin numbers
+#endif
+    pin = analogPinToChannel(pin);
+#elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+    if (pin >= 54) pin -= 54;  // allow for channel or pin numbers
+#elif defined(__AVR_ATmega32U4__)
+    if (pin >= 18) pin -= 18;  // allow for channel or pin numbers
+#elif defined(__AVR_ATmega1284__) || defined(__AVR_ATmega1284P__) || defined(__AVR_ATmega644__) || defined(__AVR_ATmega644A__) || defined(__AVR_ATmega644P__) || defined(__AVR_ATmega644PA__)
+    if (pin >= 24) pin -= 24;  // allow for channel or pin numbers
+#else
+    if (pin >= 14) pin -= 14;  // allow for channel or pin numbers
+#endif
+
+#if defined(ADCSRB) && defined(MUX5)
+    // the MUX5 bit of ADCSRB selects whether we're reading from channels
+    // 0 to 7 (MUX5 low) or 8 to 15 (MUX5 high).
+    ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((pin >> 3) & 0x01) << MUX5);
+#endif
+
+    // set the analog reference (high two bits of ADMUX) and select the
+    // channel (low 4 bits).  this also sets ADLAR (left-adjust result)
+    // to 0 (the default).
+#if defined(ADMUX)
+#if defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+    ADMUX = (analog_reference << 4) | (pin & 0x07);
+#else
+    ADMUX = (analog_reference << 6) | (pin & 0x07);
+#endif
+#endif
+
+    // without a delay, we seem to read from the wrong channel
+    //delay(1);
+
+#if defined(ADCSRA) && defined(ADC)
+    // start the conversion
+    sbi(ADCSRA, ADSC);
+
+    // ADSC is cleared when the conversion finishes
+    while (bit_is_set(ADCSRA, ADSC))
+      ;
+
+    // ADC macro takes care of reading ADC register.
+    // avr-gcc implements the proper reading order: ADCL is read first.
+    return ADC;
+#else
+    // we dont have an ADC, return 0
+    return 0;
+#endif
   }
 }
